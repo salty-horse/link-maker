@@ -1,0 +1,140 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Link maker</title>
+  <style>
+    html {text-align: center}
+    div { margin-top: 2em; }
+    #app_info { display: none; }
+    #badge-preview { display: inline; margin-top: 2em;}
+    textarea { user-select: all; margin-right: 2em;}
+
+    #search_results {
+        margin-top: 2em;
+        display: flex;
+        align-items: stretch; /* Default */
+        justify-content: center;
+        padding: 0;
+    }
+    #search_results li {
+        display: block;
+        flex: 0 1 auto; /* Default */
+        list-style-type: none;
+        width: 100px;
+    }
+  </style>
+  <!-- <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script> -->
+  <script src="https://code.jquery.com/jquery-3.3.1.js" integrity="sha256-2Kok7MbOyxpgUVvAk/HJ2jigOSYS2auK4Pfzbm7uH60=" crossorigin="anonymous"></script>
+  <script type="text/javascript">
+    "use strict";
+    async function processForm(e) {
+        e.preventDefault();
+
+        document.getElementById("embedCode").value = "";
+        document.getElementById("badge-preview").innerHTML = "";
+        document.getElementById("app_info").style.display = "none";
+        document.getElementById("app_name").textContent = "";
+
+        $("#search_results").empty();
+        let search_terms = e.target.elements.search_terms.value;
+        if (search_terms.startsWith('https://')) {
+          //let app_id = search_terms.match(/\/id(\d+)$/)[1];
+          //await showApp(app_id);
+          //return;
+
+          let app_url = search_terms.replace(/\?.*/, '') + '?at=10l5ae';
+
+          let badge_html = 
+            `<a href="${app_url}"><img src="https://www.appunwrapper.com/wp-content/uploads/appstore.svg" width="135px" height="40px"></a>`;
+
+          document.getElementById("embedCode").value = badge_html;
+          document.getElementById("badge-preview").innerHTML = badge_html;
+          document.getElementById("app_info").style.display = "block";
+        }
+        search_terms = encodeURIComponent(search_terms).replace(/%20/g, "+");
+        let response = await $.ajax({url: `https://itunes.apple.com/search?media=software&entity=iPadSoftware&limit=5&term=${search_terms}`, dataType: "jsonp"});
+        for (let result of response.results) {
+          $("#search_results")
+              .append($("<li>")
+                .append($("<img>").attr("src", result.artworkUrl60))
+                .append($("<br>"))
+                .append($("<span>").append(result.trackName))
+                .on("click", null, result.trackId, async e => { await showApp(e.data); })
+              );
+        }
+
+        return false;
+    }
+
+    async function showApp(app_id) {
+        document.getElementById("embedCode").value = "";
+        document.getElementById("badge-preview").innerHTML = "";
+        document.getElementById("app_info").style.display = "none";
+        document.getElementById("app_name").textContent = "";
+
+        let response = await $.ajax({url: `https://itunes.apple.com/lookup?id=${app_id}`, dataType: "jsonp"});
+        if (response.resultCount == 0) {
+          alert("Could not find app by ID");
+          return;
+        }
+        let app_info = response.results[0];
+
+        document.getElementById("app_name").textContent = app_info.trackName;
+        let img = document.getElementById("app_image");
+        img.src = "";
+        img.src = app_info.artworkUrl100;
+
+        let app_url = app_info.trackViewUrl.replace(/&uo=4$/, '') + '&at=10l5ae';
+
+        let badge_html = 
+          `<a href="${app_url}"><img src="https://www.appunwrapper.com/wp-content/uploads/appstore.svg" width="135px" height="40px"></a>`;
+
+        document.getElementById("embedCode").value = badge_html;
+        document.getElementById("badge-preview").innerHTML = badge_html;
+        document.getElementById("app_info").style.display = "block";
+    }
+
+    window.addEventListener('DOMContentLoaded', function() {
+      document.getElementById("search_form").addEventListener("submit", processForm);
+    });
+
+    function copyToClipboard() {
+        let el = document.getElementById('embedCode');
+        let oldContentEditable = el.contentEditable,
+            oldReadOnly = el.readOnly,
+            range = document.createRange();
+    
+        el.contentEditable = true;
+        el.readOnly = false;
+        range.selectNodeContents(el);
+    
+        let s = window.getSelection();
+        s.removeAllRanges();
+        s.addRange(range);
+    
+        el.setSelectionRange(0, 999999); // A big number, to cover anything that could be inside the element.
+    
+        el.contentEditable = oldContentEditable;
+        el.readOnly = oldReadOnly;
+    
+        document.execCommand('copy');
+    }
+  </script>
+</head>
+<body>
+  <div><form id="search_form"><input name="search_terms" placeholder="Search terms or URL" autofocus required></input><input type="submit" value="Search for app"></input></form></div>
+  <ul id="search_results"></ul>
+  <div id="app_info">
+    <span id="app_name"></span><br><img id="app_image">
+    <div id="embed">
+      <button type="button" onclick="copyToClipboard()">Copy to Clipboard</button><br>
+      <textarea id="embedCode" name="embedCode" rows="5" cols="70" onfocus="this.select()" readonly></textarea>
+    </div>
+    <div id="badge-preview"></div>
+  </div>
+</div>
+
+</body>
+</html>
+
